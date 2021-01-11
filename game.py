@@ -1,6 +1,6 @@
 # game.py
 # main class
-# authors: David
+# authors: David, Erik
 
 import pygame as py
 from PYGAME_VARS import *
@@ -69,7 +69,7 @@ class Game:
             self.physics_handler(dt)
 
             # updates screen
-            self.render_handler(self.scale, dt)
+            self.render_handler(self._scale, dt)
 
             start = time()
             # sets fps
@@ -98,7 +98,7 @@ class Game:
     # dt, DEBUGGING parameter: time dif since the last main loop iteration
     def render_handler(self, scale, dt):
         self._screen.fill(BLACK)
-        self.screen.fill(RED)
+        self.screen.fill(DARK_GREY)
 
         # DEBUGGING: display fps
         if dt == 0:
