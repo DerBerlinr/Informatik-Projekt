@@ -1,28 +1,32 @@
 # game.py
 # main class
-# authors: David, Erik
+# authors: Erik
 
+from time import time
 import pygame as py
 from PYGAME_VARS import *
-from time import time
+from car import *
 
 
 class Game:
-    def __init__(self, width=960, height=540, fps=30, ratio=(1920, 1080)):
+    def __init__(self, cars, width=960, height=540, fps=30, ratio=(1920, 1080)):
         py.init()
 
         self.width, self.height = width, height
         self.fps = fps
-        self._ratio = ratio # this should be treated as the original dimensions of the window
+        self._ratio = ratio  # this should be treated as the original dimensions of the window
         self._scale = self.get_scale()
-
 
         self._screen = py.display.set_mode([self.width, self.height], py.RESIZABLE)
         self.screen = py.Surface((self.width, self.height))
         self.clock = py.time.Clock()
 
-        #DEBUGGING average fps
+        # DEBUGGING average fps
         self.avr_fps = list(self.fps for _ in range(50))
+
+        if len(cars) > 1:
+            # INSERT KI HERE
+            pass
 
     # gets scale of current window compared to original dimensions of the window
     def get_scale(self):
@@ -77,7 +81,7 @@ class Game:
 
     # handles complex user input
     def event_handler(self, event):
-        #resize window event
+        # resize window event
         if event.type == py.VIDEORESIZE:
             self.width, self.height = event.w, event.h
 
@@ -85,7 +89,8 @@ class Game:
 
             # resize actual window
             self._scale = self.get_scale()
-            self.screen = py.transform.scale(self.screen, (int(self._ratio[0] * self._scale), int(self._ratio[1] * self._scale)))
+            self.screen = py.transform.scale(self.screen, (int(self._ratio[0] * self._scale),
+                                                           int(self._ratio[1] * self._scale)))
 
     # handles physical processes
     # dt: time dif since the last main loop iteration
@@ -106,7 +111,8 @@ class Game:
 
         self.avr_fps.pop(0)
         self.avr_fps.append(round(1 / dt, 2))
-        self.screen.blit(standard_font.render(str(round(sum(self.avr_fps) / len(self.avr_fps))) + " fps", False, WHITE), (10, 10))
+        self.screen.blit(standard_font.render(str(round(
+            sum(self.avr_fps) / len(self.avr_fps))) + " fps", False, WHITE), (10, 10))
 
         self.blit_screen()
         py.display.update()
