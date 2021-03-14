@@ -1,118 +1,206 @@
-# game.py
-# main class
-# authors: Erik
-
-from time import time
-import pygame as py
-from PYGAME_VARS import *
-from car import *
+import pygame
+from pygame.locals import *
+from car import Car
+from asteroid import Asteroid
+import random
+from fuel import Fuel
+from checkpoint import Checkpoint
+from bullet import Bullet
 
 
 class Game:
-    def __init__(self, cars, width=960, height=540, fps=30, ratio=(1920, 1080)):
-        py.init()
+    def __init__(self, cars):
+        self.black = (0, 0, 0)
+        self.red = (255, 0, 0)
+        self.green = (0, 255, 0)
+        self.blue = (0, 0, 255)
+        self.white = (255, 255, 255)
 
-        self.width, self.height = width, height
-        self.fps = fps
-        self._ratio = ratio  # this should be treated as the original dimensions of the window
-        self._scale = self.get_scale()
+        self.screen_size = self.screen_width, self.screen_height = 1000, 800
+        self.screen = pygame.display.set_mode(self.screen_size)
+        pygame.display.set_caption('Space Race')
 
-        self._screen = py.display.set_mode([self.width, self.height], py.RESIZABLE)
-        self.screen = py.Surface((self.width, self.height))
-        self.clock = py.time.Clock()
+        self.clock = pygame.time.Clock()
+        self.fps_limit = 60
+        self.running = True
 
-        # DEBUGGING average fps
-        self.avr_fps = list(self.fps for _ in range(50))
+        self.car = cars[0]
+        self.cars = [[self.car, 0]]
+        for car in cars:
+            self.cars.append([car, 0])
+        self.asteroids = []
+        self.fuel_bubbles = []
+        self.checkpoints = []
+        self.bullets = []
+        self.last_checkpoint = []  # [Score, Fuel]
 
-        if len(cars) > 1:
-            # INSERT KI HERE
-            pass
+        self.score = 0
 
-    # gets scale of current window compared to original dimensions of the window
-    def get_scale(self):
-        scale = self.width / self._ratio[0]
+    def run(self):
+        while self.running:
+            print(self.cars[0][1])
+            self.clock.tick(self.fps_limit)
+            self.score += 1
 
-        if self._ratio[1] * scale > self.height:
-            scale = self.height / self._ratio[1]
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    exit()
 
-            return scale
-
-        return scale
-
-    # blits main surface onto window
-    def blit_screen(self):
-        # determines position of main screen (for black borders)
-        dx, dy = 0, 0
-
-        if self._scale * self._ratio[0] < self.width:
-            dx = int((self.width - self._scale * self._ratio[0]) / 2)
-        elif self._scale * self._ratio[1] < self.height:
-            dy = int((self.height - self._scale * self._ratio[1]) / 2)
-
-        self._screen.blit(self.screen, (dx, dy))
-
-    # main loop of the game
-    def main(self):
-        running = True
-        start = time()
-
-        while running:
-            end = time()
-            dt = end - start
-
-            # event loop
-            for event in py.event.get():
-                # quit game
-                if event.type == py.QUIT:
-                    running = False
-                    break
+            # SPAWNING OBJECTS -----------------------------------------------------------------------------------------
+            if random.randint(1, 30) == 1:
+                if random.randint(1, 15) == 1:
+                    new_fuel_bubble = Fuel(self.screen_size)
+                    self.fuel_bubbles.append(new_fuel_bubble)
                 else:
-                    self.event_handler(event)
+                    new_asteroid = Asteroid(self.screen_size, self.score / 10000 + 1)
+                    self.asteroids.append(new_asteroid)
+            if random.randint(1,500) == 1:
+                new_checkpoint = Checkpoint(self.screen_size)
+                self.checkpoints.append(new_checkpoint)
 
-            # updates physics
-            self.physics_handler(dt)
+            # INPUTS --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            keys = pygame.key.get_pressed()
+            # MOVEMENT -------------------------------------------------------------------------------------------------
+            if self.cars[0][0].fuel >= 5:
+                if keys[K_LEFT]:
+                    self.cars[0][0].vel[0] -= 0.1
+                    self.cars[0][0].fuel -= 5
+                if keys[K_RIGHT]:
+                    self.cars[0][0].vel[0] += 0.1
+                    self.cars[0][0].fuel -= 5
+                if keys[K_UP]:
+                    self.cars[0][0].vel[1] -= 0.1
+                    self.cars[0][0].fuel -= 5
+                if keys[K_DOWN]:
+                    self.cars[0][0].vel[1] += 0.1
+                    self.cars[0][0].fuel -= 5
+            if self.cars[0][0].fuel < 1000:
+                self.cars[0][0].fuel += 1
+            # BULLET ---------------------------------------------------------------------------------------------------
+            if keys[K_SPACE]:
+                if self.cars[0][0].fuel >= 20:
+                    new_bullet = Bullet(self.cars[0][0].pos)
+                    self.bullets.append(new_bullet)
+                    self.cars[0][0].fuel -= 20
 
-            # updates screen
-            self.render_handler(self._scale, dt)
+            # KI INPUTS ------------------------------------------------------------------------------------------------
 
-            start = time()
-            # sets fps
-            self.clock.tick(self.fps)
+            # Collision detection -------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-    # handles complex user input
-    def event_handler(self, event):
-        # resize window event
-        if event.type == py.VIDEORESIZE:
-            self.width, self.height = event.w, event.h
 
-            self._screen = py.display.set_mode((self.width, self.height), py.RESIZABLE)
+            asteroid_rectlist = []
+            fuelbubble_rectlist = []
+            checkpoint_rectlist = []
+            bullet_rectlist = []
+            for asteroid in self.asteroids:
+                asteroid_rectlist.append(asteroid.rect)
+            for fuelbubble in self.fuel_bubbles:
+                fuelbubble_rectlist.append(fuelbubble.rect)
+            for checkpoint in self.checkpoints:
+                checkpoint_rectlist.append(checkpoint.rect)
+            for bullet in self.bullets:
+                bullet_rectlist.append(bullet.rect)
 
-            # resize actual window
-            self._scale = self.get_scale()
-            self.screen = py.transform.scale(self.screen, (int(self._ratio[0] * self._scale),
-                                                           int(self._ratio[1] * self._scale)))
+            for car in self.cars:
+                old_pos_car, new_pos_car = car[0].new_pos()
 
-    # handles physical processes
-    # dt: time dif since the last main loop iteration
-    def physics_handler(self, dt):
-        pass
+                # WALLS ----------------------------------------------------------------------------------------------------
+                if new_pos_car[0] > 0 and new_pos_car[0] < self.screen_width - 50 and new_pos_car[1] > 0 and new_pos_car[1] < self.screen_height - 50:
+                    # ASTEROIDS --------------------------------------------------------------------------------------------
+                    cl = car[0].rect.collidelist(asteroid_rectlist)
+                    if cl != -1:
+                        # Type 2
+                        if self.asteroids[cl].type != 1:
+                            print("You lost (crashed into asteroid)!")
+                            self.running = False
+                            if input("Do you want to restart from the last checkpoint? (Y/N) -> ") == "Y":
+                                self.running = True
+                                self.score = self.last_checkpoint[0]
+                                car[0].fuel = self.last_checkpoint[1]
+                            else:
+                                exit()
+                        else:
+                            # Type 1
+                            if car[0].fuel > 200:
+                                car[0].fuel -= 200
+                                self.asteroids.pop(cl)
+                            else:
+                                print("You lost (crashed into asteroid)!")
+                                self.running = False
+                                if input("Do you want to restart from the last checkpoint? (Y/N) -> ") == "Y":
+                                    self.running = True
+                                    self.score = self.last_checkpoint[0]
+                                    car[0].fuel = self.last_checkpoint[1]
+                                else:
+                                    exit()
+                    # FUEL -------------------------------------------------------------------------------------------------
+                    cl_f = car[0].rect.collidelist(fuelbubble_rectlist)
+                    if cl_f != -1:
+                        car[0].fuel += 500
+                        self.fuel_bubbles.pop(cl_f)
+                    # CHECKPOINTS ------------------------------------------------------------------------------------------
+                    cl_c = car[0].rect.collidelist(checkpoint_rectlist)
+                    if cl_c != -1:
+                        car[1] += 1
+                else:
+                    print("You lost (crashed into wall)!")
+                    self.running = False
+                    if input("Do you want to restart from the last checkpoint? (Y/N) -> ") == "Y":
+                        self.running = True
+                        self.score = self.last_checkpoint[0]
+                        car[0].fuel = self.last_checkpoint[1]
+                    else:
+                        exit()
 
-    # redraws the screen
-    # scale: all rendered objects coordinates and dimensions must be scaled down with this factor before being blitted
-    # onto the main surface
-    # dt, DEBUGGING parameter: time dif since the last main loop iteration
-    def render_handler(self, scale, dt):
-        self._screen.fill(BLACK)
-        self.screen.fill(DARK_GREY)
+                # BULLETS --------------------------------------------------------------------------------------------------
+                for bullet in self.bullets:
+                    cl_b = bullet.rect.collidelist(asteroid_rectlist)
+                    if cl_b != -1:
+                        self.asteroids.pop(cl)
+                        self.bullets.remove(bullet)
+                    else:
+                        if bullet.pos[0] < self.screen_width:
+                            bullet.new_pos()
+                        else:
+                            self.bullets.remove(bullet)
 
-        # DEBUGGING: display fps
-        if dt == 0:
-            dt = 1
 
-        self.avr_fps.pop(0)
-        self.avr_fps.append(round(1 / dt, 2))
-        self.screen.blit(standard_font.render(str(round(
-            sum(self.avr_fps) / len(self.avr_fps))) + " fps", False, WHITE), (10, 10))
 
-        self.blit_screen()
-        py.display.update()
+            # DEL ASTEROIDS IF OUT OF SIGHT ----------------------------------------------------------------------------
+            for asteroid in self.asteroids:
+                if asteroid.pos[0] > 0:
+                    asteroid.new_pos()
+                else:
+                    self.asteroids.remove(asteroid)
+
+            # DEL FUEL IF OUT OF SIGHT ---------------------------------------------------------------------------------
+            for fuel in self.fuel_bubbles:
+                if fuel.pos[0] > 0:
+                    fuel.new_pos()
+                else:
+                    self.fuel_bubbles.remove(fuel)
+
+            # DEL CHECKPOINTS IF OUT OF SIGHT --------------------------------------------------------------------------
+            for checkpoint in self.checkpoints:
+                if checkpoint.pos[0] > 0:
+                    checkpoint.new_pos()
+                else:
+                    self.checkpoints.remove(checkpoint)
+
+            # RENDERING -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            self.screen.fill(self.white)
+            for car in self.cars:
+                car[0].render(self.screen)
+            for asteroid in self.asteroids:
+                asteroid.render(self.screen)
+            for fuel in self.fuel_bubbles:
+                fuel.render(self.screen)
+            for checkpoint in self.checkpoints:
+                checkpoint.render(self.screen)
+            for bullet in self.bullets:
+                bullet.render(self.screen)
+            # Fuel bar
+            pygame.draw.rect(self.screen, (255, 255, 0), pygame.Rect(5, self.screen_height - 15, self.cars[0][0].fuel / 2, 10))
+            pygame.draw.rect(self.screen, (128, 128, 128), pygame.Rect(5, self.screen_height - 15, 500, 10), 1)
+
+            pygame.display.flip()
