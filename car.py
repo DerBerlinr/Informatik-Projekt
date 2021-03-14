@@ -8,7 +8,8 @@ class Car:
         self.carImg = pygame.image.load('spaceship.png')
         self.carImg = pygame.transform.scale(self.carImg, (50, 50))
         self.rect = self.carImg.get_rect(topleft=(self.pos[0], self.pos[1]))
-        self.fuel = 100
+        self.fuel = 1000
+        self.passed_checkpoints = []
 
     def render(self, window):
         window.blit(self.carImg, self.rect)

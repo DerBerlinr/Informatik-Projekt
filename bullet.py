@@ -6,6 +6,7 @@ import copy
 class Bullet:
     def __init__(self, pos):
         self.pos = copy.deepcopy(pos)
+        self.pos = [self.pos[0]+50, self.pos[1]+20]
         self.vel = [4, 0]
         self.rect = pygame.Rect(self.pos[0], self.pos[1], 5, 10)
 

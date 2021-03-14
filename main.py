@@ -1,5 +1,6 @@
 from game import *
 from car import *
+import time
 
 if __name__ == '__main__':
     cars = []
@@ -8,5 +9,5 @@ if __name__ == '__main__':
         cars.append(temp_car)
 
     game = Game(cars)
-
+    time.sleep(1)
     game.run()

@@ -3,11 +3,13 @@ import pygame
 
 
 class Checkpoint():
-    def __init__(self, screensize):
+    def __init__(self, screensize, nr):
+        self.nr = nr
         self.screensize = screensize
         self.pos = [screensize[0], 0]
         self.vel = [-5, 0]
         self.rect = pygame.Rect(self.pos[0], self.pos[1], 10, screensize[1])
+        self.passed = 0
 
     def new_pos(self):
         self.pos[0] += self.vel[0]

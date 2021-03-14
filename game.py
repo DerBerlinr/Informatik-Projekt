@@ -1,11 +1,11 @@
 import pygame
 from pygame.locals import *
-from car import Car
 from asteroid import Asteroid
 import random
 from fuel import Fuel
 from checkpoint import Checkpoint
 from bullet import Bullet
+import ctypes
 
 
 class Game:
@@ -19,6 +19,8 @@ class Game:
         self.screen_size = self.screen_width, self.screen_height = 1000, 800
         self.screen = pygame.display.set_mode(self.screen_size)
         pygame.display.set_caption('Space Race')
+        self.background = pygame.image.load("space.webp")
+        self.background = pygame.transform.scale(self.background, (1000, 800))
 
         self.clock = pygame.time.Clock()
         self.fps_limit = 60
@@ -33,12 +35,12 @@ class Game:
         self.checkpoints = []
         self.bullets = []
         self.last_checkpoint = []  # [Score, Fuel]
+        self.checkpoint_counter = 1
 
         self.score = 0
 
     def run(self):
         while self.running:
-            print(self.cars[0][1])
             self.clock.tick(self.fps_limit)
             self.score += 1
 
@@ -47,16 +49,24 @@ class Game:
                     exit()
 
             # SPAWNING OBJECTS -----------------------------------------------------------------------------------------
-            if random.randint(1, 30) == 1:
+            level = 1
+            if self.score > 500:
+                level = 2
+            if self.score > 1000:
+                level = 3
+            if self.score > 1250:
+                level = 4
+            if random.randint(1, int(30 / level)) == 1:
                 if random.randint(1, 15) == 1:
                     new_fuel_bubble = Fuel(self.screen_size)
                     self.fuel_bubbles.append(new_fuel_bubble)
                 else:
                     new_asteroid = Asteroid(self.screen_size, self.score / 10000 + 1)
                     self.asteroids.append(new_asteroid)
-            if random.randint(1,500) == 1:
-                new_checkpoint = Checkpoint(self.screen_size)
+            if random.randint(1, 1000) == 0:
+                new_checkpoint = Checkpoint(self.screen_size, self.checkpoint_counter)
                 self.checkpoints.append(new_checkpoint)
+                self.checkpoint_counter += 1
 
             # INPUTS --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
             keys = pygame.key.get_pressed()
@@ -83,80 +93,109 @@ class Game:
                     self.bullets.append(new_bullet)
                     self.cars[0][0].fuel -= 20
 
-            # KI INPUTS ------------------------------------------------------------------------------------------------
+            # "KI" INPUTS ----------------------------------------------------------------------------------------------
+            # because real ki not working (i tried hard)
+            for car in self.cars:
+                if car != self.cars[0]:
+                    if random.randint(1, 10) == 1:
+                        if random.randint(1, 4) == 1:
+                            if car[0].pos[0] < (self.screen_width - 50) and car[0].pos[1] < (self.screen_height - 50):
+                                car[0].vel[0] += random.random()
+                                car[0].vel[1] += random.random()
+                            else:
+                                car[0].vel[0] -= random.random()
+                                car[0].vel[1] -= random.random()
+                        if random.randint(1, 4) == 2:
+                            if car[0].pos[0] > 50 and car[0].pos[1] < (self.screen_height - 50):
+                                car[0].vel[0] -= random.random()
+                                car[0].vel[1] += random.random()
+                            else:
+                                car[0].vel[0] += random.random()
+                                car[0].vel[1] -= random.random()
+                        if random.randint(1, 4) == 3:
+                            if car[0].pos[0] < (self.screen_width - 50) and car[0].pos[1] > 50:
+                                car[0].vel[0] += random.random()
+                                car[0].vel[1] -= random.random()
+                            else:
+                                car[0].vel[0] -= random.random()
+                                car[0].vel[1] += random.random()
+                        if random.randint(1, 4) == 4:
+                            if car[0].pos[0] > 50 and car[0].pos[1] > 50:
+                                car[0].vel[0] -= random.random()
+                                car[0].vel[1] -= random.random()
+                            else:
+                                car[0].vel[0] += random.random()
+                                car[0].vel[1] += random.random()
+
+
+
 
             # Collision detection -------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-            asteroid_rectlist = []
-            fuelbubble_rectlist = []
-            checkpoint_rectlist = []
-            bullet_rectlist = []
-            for asteroid in self.asteroids:
-                asteroid_rectlist.append(asteroid.rect)
-            for fuelbubble in self.fuel_bubbles:
-                fuelbubble_rectlist.append(fuelbubble.rect)
-            for checkpoint in self.checkpoints:
-                checkpoint_rectlist.append(checkpoint.rect)
-            for bullet in self.bullets:
-                bullet_rectlist.append(bullet.rect)
-
             for car in self.cars:
+                asteroid_rectlist = []
+                fuelbubble_rectlist = []
+                checkpoint_rectlist = []
+                bullet_rectlist = []
+                for asteroid in self.asteroids:
+                    asteroid_rectlist.append(asteroid.rect)
+                for fuelbubble in self.fuel_bubbles:
+                    fuelbubble_rectlist.append(fuelbubble.rect)
+                for checkpoint in self.checkpoints:
+                    checkpoint_rectlist.append(checkpoint.rect)
+                for bullet in self.bullets:
+                    bullet_rectlist.append(bullet.rect)
                 old_pos_car, new_pos_car = car[0].new_pos()
 
-                # WALLS ----------------------------------------------------------------------------------------------------
+                # WALLS ------------------------------------------------------------------------------------------------
                 if new_pos_car[0] > 0 and new_pos_car[0] < self.screen_width - 50 and new_pos_car[1] > 0 and new_pos_car[1] < self.screen_height - 50:
-                    # ASTEROIDS --------------------------------------------------------------------------------------------
+                    # ASTEROIDS ----------------------------------------------------------------------------------------
                     cl = car[0].rect.collidelist(asteroid_rectlist)
                     if cl != -1:
                         # Type 2
                         if self.asteroids[cl].type != 1:
-                            print("You lost (crashed into asteroid)!")
-                            self.running = False
-                            if input("Do you want to restart from the last checkpoint? (Y/N) -> ") == "Y":
-                                self.running = True
-                                self.score = self.last_checkpoint[0]
-                                car[0].fuel = self.last_checkpoint[1]
+                            if car == self.cars[0]:
+                                print("You lost (crashed into asteroid)!")
+                                self.running = False
                             else:
-                                exit()
+                                self.cars.remove(car)
                         else:
                             # Type 1
                             if car[0].fuel > 200:
                                 car[0].fuel -= 200
                                 self.asteroids.pop(cl)
                             else:
-                                print("You lost (crashed into asteroid)!")
-                                self.running = False
-                                if input("Do you want to restart from the last checkpoint? (Y/N) -> ") == "Y":
-                                    self.running = True
-                                    self.score = self.last_checkpoint[0]
-                                    car[0].fuel = self.last_checkpoint[1]
+                                if car == self.cars[0]:
+                                    print("You lost (crashed into asteroid)!")
+                                    self.running = False
                                 else:
-                                    exit()
-                    # FUEL -------------------------------------------------------------------------------------------------
+                                    self.cars.remove(car)
+                    # FUEL ---------------------------------------------------------------------------------------------
                     cl_f = car[0].rect.collidelist(fuelbubble_rectlist)
                     if cl_f != -1:
                         car[0].fuel += 500
                         self.fuel_bubbles.pop(cl_f)
-                    # CHECKPOINTS ------------------------------------------------------------------------------------------
+                    # CHECKPOINTS --------------------------------------------------------------------------------------
                     cl_c = car[0].rect.collidelist(checkpoint_rectlist)
                     if cl_c != -1:
-                        car[1] += 1
+                        if not(self.checkpoints[cl_c].nr in car[0].passed_checkpoints):
+                            car[1] += (5 - self.checkpoints[cl_c].passed)
+                            self.checkpoints[cl_c].passed += 1
+                            car[0].passed_checkpoints.append(self.checkpoints[cl_c].nr)
                 else:
-                    print("You lost (crashed into wall)!")
-                    self.running = False
-                    if input("Do you want to restart from the last checkpoint? (Y/N) -> ") == "Y":
-                        self.running = True
-                        self.score = self.last_checkpoint[0]
-                        car[0].fuel = self.last_checkpoint[1]
+                    if car == self.cars[0]:
+                        print("You lost (crashed into wall)!")
+                        self.running = False
                     else:
-                        exit()
+                        self.cars.remove(car)
 
-                # BULLETS --------------------------------------------------------------------------------------------------
+                # BULLETS ----------------------------------------------------------------------------------------------
+                asteroid_rectlist = []
+                for asteroid in self.asteroids:
+                    asteroid_rectlist.append(asteroid.rect)
                 for bullet in self.bullets:
                     cl_b = bullet.rect.collidelist(asteroid_rectlist)
                     if cl_b != -1:
-                        self.asteroids.pop(cl)
+                        self.asteroids.pop(cl_b)
                         self.bullets.remove(bullet)
                     else:
                         if bullet.pos[0] < self.screen_width:
@@ -188,7 +227,7 @@ class Game:
                     self.checkpoints.remove(checkpoint)
 
             # RENDERING -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-            self.screen.fill(self.white)
+            self.screen.blit(self.background, (0, 0))
             for car in self.cars:
                 car[0].render(self.screen)
             for asteroid in self.asteroids:
@@ -204,3 +243,4 @@ class Game:
             pygame.draw.rect(self.screen, (128, 128, 128), pygame.Rect(5, self.screen_height - 15, 500, 10), 1)
 
             pygame.display.flip()
+        ctypes.windll.user32.MessageBoxW(0, "You crashed into something \nYour Score: "+str(self.score)+"\nYour Points: "+str(self.cars[0][1]), "You Lost :(")
