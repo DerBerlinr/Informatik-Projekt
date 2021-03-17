@@ -26,8 +26,7 @@ class Game:
         self.fps_limit = 60
         self.running = True
 
-        self.car = cars[0]
-        self.cars = [[self.car, 0]]
+        self.cars = []
         for car in cars:
             self.cars.append([car, 0])
         self.asteroids = []
@@ -63,7 +62,7 @@ class Game:
                 else:
                     new_asteroid = Asteroid(self.screen_size, self.score / 10000 + 1)
                     self.asteroids.append(new_asteroid)
-            if random.randint(1, 1000) == 0:
+            if random.randint(1, 1000) == 1:
                 new_checkpoint = Checkpoint(self.screen_size, self.checkpoint_counter)
                 self.checkpoints.append(new_checkpoint)
                 self.checkpoint_counter += 1
@@ -154,7 +153,6 @@ class Game:
                         # Type 2
                         if self.asteroids[cl].type != 1:
                             if car == self.cars[0]:
-                                print("You lost (crashed into asteroid)!")
                                 self.running = False
                             else:
                                 self.cars.remove(car)
@@ -165,7 +163,6 @@ class Game:
                                 self.asteroids.pop(cl)
                             else:
                                 if car == self.cars[0]:
-                                    print("You lost (crashed into asteroid)!")
                                     self.running = False
                                 else:
                                     self.cars.remove(car)
@@ -183,7 +180,6 @@ class Game:
                             car[0].passed_checkpoints.append(self.checkpoints[cl_c].nr)
                 else:
                     if car == self.cars[0]:
-                        print("You lost (crashed into wall)!")
                         self.running = False
                     else:
                         self.cars.remove(car)
@@ -243,4 +239,16 @@ class Game:
             pygame.draw.rect(self.screen, (128, 128, 128), pygame.Rect(5, self.screen_height - 15, 500, 10), 1)
 
             pygame.display.flip()
-        ctypes.windll.user32.MessageBoxW(0, "You crashed into something \nYour Score: "+str(self.score)+"\nYour Points: "+str(self.cars[0][1]), "You Lost :(")
+        if ctypes.windll.user32.MessageBoxW(0, "You crashed into something \nYour Score: "+str(self.score)+"\nYour Points: "+str(self.cars[0][1]), "You Lost :(", 5) == 4:
+            self.asteroids = []
+            self.fuel_bubbles = []
+            self.bullets = []
+            self.checkpoints = []
+            self.score = 0
+            for car in self.cars:
+                car[1] = 0
+                car[0].pos = [300, 200]
+                car[0].vel = [0, 0]
+                car[0].fuel = 1000
+            self.running = True
+            self.run()
