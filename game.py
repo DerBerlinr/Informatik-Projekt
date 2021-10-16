@@ -22,7 +22,7 @@ class Game:
         self.clock = py.time.Clock()
 
         #DEBUGGING average fps
-        self.avr_fps = list(self.fps for _ in range(50))
+        self.avr_fps = [self.fps for _ in range(50)]
 
     # gets scale of current window compared to original dimensions of the window
     def get_scale(self):
