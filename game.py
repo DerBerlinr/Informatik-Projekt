@@ -62,8 +62,7 @@ class Game:
                 if event.type == py.QUIT:
                     running = False
                     break
-                else:
-                    self.event_handler(event)
+                self.event_handler(event)
 
             # updates physics
             self.physics_handler(dt)
